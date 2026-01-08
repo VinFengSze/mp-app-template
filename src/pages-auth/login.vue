@@ -4,6 +4,7 @@ import { useTokenStore } from '@/store/token'
 definePage({
   style: {
     navigationBarTitleText: '登录',
+    navigationStyle: 'custom',
   },
 })
 
@@ -28,7 +29,7 @@ async function doLogin() {
 </script>
 
 <template>
-  <view class="login">
+  <hy-safetop-page class="login">
     <!-- 本页面是非MP的登录页，主要用于 h5 和 APP -->
     <view class="text-center">
       登录页
@@ -36,7 +37,7 @@ async function doLogin() {
     <button class="mt-4 w-40 text-center" @click="doLogin">
       点击模拟登录
     </button>
-  </view>
+  </hy-safetop-page>
 </template>
 
 <style lang="scss" scoped>

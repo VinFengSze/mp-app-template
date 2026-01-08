@@ -3,11 +3,13 @@ import { storeToRefs } from 'pinia'
 import { LOGIN_PAGE } from '@/router/config'
 import { useUserStore } from '@/store'
 import { useTokenStore } from '@/store/token'
+import { toLoginPage } from '@/utils/toLoginPage'
 
 definePage({
   style: {
     navigationBarTitleText: '%tabbar.me%',
   },
+  excludeLoginPath: false,
 })
 
 const userStore = useUserStore()
@@ -44,7 +46,8 @@ function handleLogout() {
         })
         // #ifdef MP-WEIXIN
         // 微信小程序，去首页
-        // uni.reLaunch({ url: '/pages/index/index' })
+
+        toLoginPage({ mode: 'reLaunch' })
         // #endif
         // #ifndef MP-WEIXIN
         // 非微信小程序，去登录页

@@ -1,21 +1,22 @@
-<route lang="json">
+<!-- <route lang="json">
 {
   "style": {
     "navigationBarTitleText": "%i18n.title%"
   }
 }
-</route>
+</route> -->
 
 <script lang="ts" setup>
 import i18n, { t } from '@/locale/index'
 import { setTabbarItem } from '@/tabbar/i18n'
 import { testI18n } from '@/utils/i18n'
 
-// definePage({
-//   style: {
-//     navigationBarTitleText: '%i18n.title%',
-//   },
-// })
+definePage({
+  style: {
+    navigationBarTitleText: '%i18n.title%',
+  },
+  excludeLoginPath: false,
+})
 
 const current = ref(uni.getLocale())
 const user = { name: '张三', detail: { height: 178, weight: '75kg' } }

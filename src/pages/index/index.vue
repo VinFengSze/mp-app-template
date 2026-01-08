@@ -10,6 +10,7 @@ definePage({
     navigationStyle: 'default',
     navigationBarTitleText: '%tabbar.home%',
   },
+  excludeLoginPath: false,
 })
 
 const description = ref(
