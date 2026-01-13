@@ -1,9 +1,11 @@
 import type { IDoubleTokenRes } from '@/api/types/login'
 import type { CustomRequestOptions, IResponse } from '@/http/types'
 import { nextTick } from 'vue'
+import { t } from '@/locale'
 import { useTokenStore } from '@/store/token'
 import { isDoubleTokenMode } from '@/utils'
 import { toLoginPage } from '@/utils/toLoginPage'
+import { loadingManager } from './loadingManager'
 import { ResultEnum } from './tools/enum'
 
 // 刷新 token 状态管理
@@ -13,6 +15,21 @@ let taskQueue: (() => void)[] = [] // 刷新 token 请求队列
 export function http<T>(options: CustomRequestOptions) {
   // 1. 返回 Promise 对象
   return new Promise<T>((resolve, reject) => {
+    // 显示全局loading（如果未设置hideLoading）
+    // 使用清理函数确保在请求完成时正确隐藏loading
+    let hideLoading: (() => void) | null = null
+    if (!options.hideLoading) {
+      hideLoading = loadingManager.show()
+    }
+
+    // 统一的loading清理函数
+    const cleanup = () => {
+      if (hideLoading) {
+        hideLoading()
+        hideLoading = null
+      }
+    }
+
     uni.request({
       ...options,
       dataType: 'json',
@@ -21,104 +38,120 @@ export function http<T>(options: CustomRequestOptions) {
       // #endif
       // 响应成功
       success: async (res) => {
-        const responseData = res.data as IResponse<T>
-        const { code } = responseData
+        console.log('请求成功-------XGHY', res)
+        // 使用try-finally确保loading一定会被清理
+        try {
+          const responseData = res.data as IResponse<T>
+          const { code } = responseData
 
-        // 检查是否是401错误（包括HTTP状态码401或业务码401）
-        const isTokenExpired = res.statusCode === 401 || code === 401
+          // 检查是否是401错误（包括HTTP状态码401或业务码401）
+          const isTokenExpired = res.statusCode === 401 || code === 401
 
-        if (isTokenExpired) {
-          const tokenStore = useTokenStore()
-          if (!isDoubleTokenMode) {
+          if (isTokenExpired) {
+            const tokenStore = useTokenStore()
+            if (!isDoubleTokenMode) {
             // 未启用双token策略，清理用户信息，跳转到登录页
-            tokenStore.logout()
-            toLoginPage()
+              tokenStore.logout()
+              toLoginPage()
+              return reject(res)
+            }
+
+            /* -------- 无感刷新 token ----------- */
+            const { refresh_token } = tokenStore.tokenInfo as IDoubleTokenRes || {}
+            // token 失效的，且有刷新 token 的，才放到请求队列里
+            if (refresh_token) {
+              taskQueue.push(() => {
+                resolve(http<T>(options))
+              })
+            }
+
+            // 如果有 refresh_token 且未在刷新中，发起刷新 token 请求
+            if (refresh_token && !refreshing) {
+              refreshing = true
+              try {
+              // 发起刷新 token 请求（使用 store 的 refreshToken 方法）
+                await tokenStore.refreshToken()
+                // 刷新 token 成功
+                refreshing = false
+                nextTick(() => {
+                // 关闭其他弹窗
+                  uni.hideToast()
+                  uni.showToast({
+                    title: t('http.tokenRefreshSuccess'),
+                    icon: 'none',
+                  })
+                })
+                // 将任务队列的所有任务重新请求
+                taskQueue.forEach(task => task())
+              }
+              catch (refreshErr) {
+                console.error('刷新 token 失败:', refreshErr)
+                refreshing = false
+                // 刷新 token 失败，跳转到登录页
+                nextTick(() => {
+                // 关闭其他弹窗
+                  uni.hideToast()
+                  uni.showToast({
+                    title: t('http.loginExpired'),
+                    icon: 'none',
+                  })
+                })
+                // 清除用户信息
+                await tokenStore.logout()
+                // 跳转到登录页
+                setTimeout(() => {
+                  toLoginPage()
+                }, 2000)
+              }
+              finally {
+              // 不管刷新 token 成功与否，都清空任务队列
+                taskQueue = []
+              }
+            }
+
             return reject(res)
           }
 
-          /* -------- 无感刷新 token ----------- */
-          const { refreshToken } = tokenStore.tokenInfo as IDoubleTokenRes || {}
-          // token 失效的，且有刷新 token 的，才放到请求队列里
-          if (refreshToken) {
-            taskQueue.push(() => {
-              resolve(http<T>(options))
-            })
-          }
-
-          // 如果有 refreshToken 且未在刷新中，发起刷新 token 请求
-          if (refreshToken && !refreshing) {
-            refreshing = true
-            try {
-              // 发起刷新 token 请求（使用 store 的 refreshToken 方法）
-              await tokenStore.refreshToken()
-              // 刷新 token 成功
-              refreshing = false
-              nextTick(() => {
-                // 关闭其他弹窗
-                uni.hideToast()
-                uni.showToast({
-                  title: 'token 刷新成功',
-                  icon: 'none',
-                })
+          // 处理其他成功状态（HTTP状态码200-299）
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            // 处理业务逻辑错误
+            // fix 登录没有返回业务code
+            if (code !== undefined && code !== ResultEnum.Success0 && code !== ResultEnum.Success200) {
+              uni.showToast({
+                icon: 'none',
+                title: responseData.msg || responseData.message || t('http.requestError'),
               })
-              // 将任务队列的所有任务重新请求
-              taskQueue.forEach(task => task())
             }
-            catch (refreshErr) {
-              console.error('刷新 token 失败:', refreshErr)
-              refreshing = false
-              // 刷新 token 失败，跳转到登录页
-              nextTick(() => {
-                // 关闭其他弹窗
-                uni.hideToast()
-                uni.showToast({
-                  title: '登录已过期，请重新登录',
-                  icon: 'none',
-                })
-              })
-              // 清除用户信息
-              await tokenStore.logout()
-              // 跳转到登录页
-              setTimeout(() => {
-                toLoginPage()
-              }, 2000)
-            }
-            finally {
-              // 不管刷新 token 成功与否，都清空任务队列
-              taskQueue = []
-            }
+            return resolve(responseData as any)
           }
 
-          return reject(res)
+          // 处理其他错误
+          !options.hideErrorToast
+          && uni.showToast({
+            icon: 'none',
+            title: (res.data as any).msg || t('http.requestError'),
+          })
+          reject(res)
         }
-
-        // 处理其他成功状态（HTTP状态码200-299）
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          // 处理业务逻辑错误
-          if (code !== ResultEnum.Success0 && code !== ResultEnum.Success200) {
-            uni.showToast({
-              icon: 'none',
-              title: responseData.msg || responseData.message || '请求错误',
-            })
-          }
-          return resolve(responseData.data)
+        finally {
+          // 确保loading被清理
+          cleanup()
         }
-
-        // 处理其他错误
-        !options.hideErrorToast
-        && uni.showToast({
-          icon: 'none',
-          title: (res.data as any).msg || '请求错误',
-        })
-        reject(res)
       },
       // 响应失败
       fail(err) {
-        uni.showToast({
-          icon: 'none',
-          title: '网络错误，换个网络试试',
-        })
-        reject(err)
+        // 使用try-finally确保loading一定会被清理
+        try {
+          !options.hideErrorToast && uni.showToast({
+            icon: 'none',
+            title: t('http.networkError'),
+          })
+          reject(err)
+        }
+        finally {
+          // 确保loading被清理
+          cleanup()
+        }
       },
     })
   })

@@ -1,36 +1,57 @@
-import type { IUserInfoRes } from '@/api/types/login'
+import type { UserInfo } from '@/api/types/login'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   getUserInfo,
 } from '@/api/login'
 
+const defaultAvatar = '/static/images/default-avatar.png'
 // 初始化状态
-const userInfoState: IUserInfoRes = {
-  userId: -1,
-  username: '',
-  nickname: '',
-  avatar: '/static/images/default-avatar.png',
+const userInfoState: UserInfo = {
+  userId: '',
+  userName: '',
+  deptId: '',
+  deptName: '',
+  companyId: '',
+  companyName: '',
+  admin: false,
+  sex: '',
+  phone: '',
+  email: '',
+  avatar: defaultAvatar,
+  depts: [],
+  permissions: [],
+  rolesList: [],
+
 }
 
 export const useUserStore = defineStore(
   'user',
   () => {
     // 定义用户信息
-    const userInfo = ref<IUserInfoRes>({ ...userInfoState })
+    const userInfo = ref<UserInfo>({ ...userInfoState })
     // 设置用户信息
-    const setUserInfo = (val: IUserInfoRes) => {
-      console.log('设置用户信息', val)
-      // 若头像为空 则使用默认头像
-      if (!val.avatar) {
-        val.avatar = userInfoState.avatar
+    const setUserInfo = (val: UserInfo) => {
+      userInfo.value = {
+        userId: val.userId,
+        userName: val.userName,
+        deptId: val.deptId || '',
+        deptName: val.deptName || '',
+        companyId: val.companyId || '',
+        companyName: val.companyName || '',
+        admin: val.admin || false,
+        sex: val.sex || '',
+        phone: val.phone || '',
+        email: val.email || '',
+        avatar: val.avatar || defaultAvatar,
+        depts: val.depts || [],
+        permissions: val.permissions || [],
+        roles: val.roles || [],
+        rolesList: val.rolesList || [],
       }
-      userInfo.value = val
     }
     const setUserAvatar = (avatar: string) => {
       userInfo.value.avatar = avatar
-      console.log('设置用户头像', avatar)
-      console.log('userInfo', userInfo.value)
     }
     // 删除用户信息
     const clearUserInfo = () => {
@@ -43,7 +64,8 @@ export const useUserStore = defineStore(
      */
     const fetchUserInfo = async () => {
       const res = await getUserInfo()
-      setUserInfo(res)
+      const { sysUser, permissions, roles, rolesList, depts } = res.data
+      setUserInfo({ ...sysUser, permissions, roles, rolesList, depts })
       return res
     }
 

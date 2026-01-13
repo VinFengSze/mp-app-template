@@ -6,5 +6,10 @@
   "alova.title": "Alova 请求",
   "weight": "{heavy}公斤",
   "detail": "{0}cm, {1}公斤",
-  "introduction": "我是 {name},身高:{detail.height},体重:{detail.weight}"
+  "introduction": "我是 {name},身高:{detail.height},体重:{detail.weight}",
+  "http.tokenRefreshSuccess": "token 刷新成功",
+  "http.loginExpired": "登录已过期，请重新登录",
+  "http.requestError": "请求错误",
+  "http.networkError": "网络错误，换个网络试试",
+  "http.loading": "加载中..."
 }

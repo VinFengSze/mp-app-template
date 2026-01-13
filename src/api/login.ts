@@ -17,34 +17,50 @@ export function getCode() {
   return http.get<ICaptcha>('/user/getCode')
 }
 
+export function login(loginForm: ILoginForm) {
+  const grant_type = 'password'
+  const scope = 'server'
+  const header = {
+    Authorization: 'Basic YnVzaW5lc3M6WGNtZzEyMw==',
+  }
+  return http.post<IAuthLoginRes>('/auth/oauth/token', {}, { ...loginForm, grant_type, scope }, header)
+}
 /**
  * 用户登录
  * @param loginForm 登录表单
  */
-export function login(loginForm: ILoginForm) {
-  return http.post<IAuthLoginRes>('/auth/login', loginForm)
-}
+// export function login(loginForm: ILoginForm) {
+//   return http.post<IAuthLoginRes>('/auth/login', loginForm)
+// }
 
+// export function refreshToken(refreshToken: string) {
+//   return http.post<IDoubleTokenRes>('/auth/refreshToken', { refreshToken })
+// }
 /**
  * 刷新token
  * @param refreshToken 刷新token
  */
-export function refreshToken(refreshToken: string) {
-  return http.post<IDoubleTokenRes>('/auth/refreshToken', { refreshToken })
+export function refreshToken(refresh_token: string) {
+  const grant_type = 'refresh_token'
+  const scope = 'server'
+  const header = {
+    Authorization: 'Basic YnVzaW5lc3M6WGNtZzEyMw==',
+  }
+  return http.post<IDoubleTokenRes>('/auth/oauth/token', { refresh_token, grant_type, scope }, header)
 }
 
 /**
  * 获取用户信息
  */
 export function getUserInfo() {
-  return http.get<IUserInfoRes>('/user/info')
+  return http.get<IUserInfoRes>('/admin/user/info')
 }
 
 /**
  * 退出登录
  */
 export function logout() {
-  return http.get<void>('/auth/logout')
+  return http.delete<void>('/auth/token/logout')
 }
 
 /**
@@ -82,4 +98,13 @@ export function getWxCode() {
  */
 export function wxLogin(data: { code: string }) {
   return http.post<IAuthLoginRes>('/auth/wxLogin', data)
+}
+
+/**
+ * 微信手机号登录
+ * @param params 微信手机号登录参数，包含code和encryptedData、iv
+ * @returns Promise 包含登录结果
+ */
+export function wxPhoneLogin(data: { code: string, encryptedData: string, iv: string }) {
+  return http.post<IAuthLoginRes>('/auth/wechat-login', data)
 }

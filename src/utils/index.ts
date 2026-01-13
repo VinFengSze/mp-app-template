@@ -1,5 +1,7 @@
 import type { PageMetaDatum, SubPackages } from '@uni-helper/vite-plugin-uni-pages'
 import { isMpWeixin } from '@uni-helper/uni-env'
+
+import CryptoJS from 'crypto-js'
 import { pages, subPackages } from '@/pages.json'
 import { isPageTabbar } from '@/tabbar/store'
 
@@ -112,7 +114,7 @@ export function getCurrentPageI18nKey() {
     subPackages?.forEach((config) => {
       config.pages?.forEach((cur) => {
         allSubPages.push({
-          ...cur,
+          ...cur as PageMetaDatum,
           path: `/${config.root}/${cur.path}`,
         })
       })
@@ -139,9 +141,10 @@ export function isCurrentPageTabbar() {
 export function getEnvBaseUrl() {
   // 请求基准地址
   let baseUrl = import.meta.env.VITE_SERVER_BASEURL
+  const proxyPrefix = import.meta.env.VITE_APP_PROXY_PREFIX
 
   // # 有些同学可能需要在微信小程序里面根据 develop、trial、release 分别设置上传地址，参考代码如下。
-  const VITE_SERVER_BASEURL__WEIXIN_DEVELOP = 'https://ukw0y1.laf.run'
+  const VITE_SERVER_BASEURL__WEIXIN_DEVELOP = baseUrl
   const VITE_SERVER_BASEURL__WEIXIN_TRIAL = 'https://ukw0y1.laf.run'
   const VITE_SERVER_BASEURL__WEIXIN_RELEASE = 'https://ukw0y1.laf.run'
 
@@ -163,8 +166,16 @@ export function getEnvBaseUrl() {
         break
     }
   }
-
+  // #ifdef H5
+  if (import.meta.env.VITE_APP_PROXY_ENABLE === 'true') {
+    return baseUrl + proxyPrefix
+  }
   return baseUrl
+  // #endif
+
+  // #ifndef H5
+  return baseUrl
+  // #endif
 }
 
 /**
@@ -177,3 +188,89 @@ export const isDoubleTokenMode = import.meta.env.VITE_AUTH_MODE === 'double'
  * 通常为 /pages/index/index
  */
 export const HOME_PAGE = `/${(pages as PageMetaDatum[]).find(page => page.type === 'home')?.path || (pages as PageMetaDatum[])[0].path}`
+
+/**
+ * 加密类型
+ */
+export type EncryptionType = 'Base64' | 'AES'
+
+/**
+ * 加密参数定义
+ */
+export interface EncryptionParams<T extends Record<string, any>> {
+  data: T
+  type: EncryptionType
+  param: (keyof T)[]
+  key?: string
+}
+
+/**
+ * 深拷贝（App / 小程序通用）
+ */
+function deepClone<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj))
+}
+
+/**
+ * Base64 编码（跨端，不使用 btoa）
+ */
+function base64Encode(value: unknown): string {
+  return CryptoJS.enc.Base64.stringify(
+    CryptoJS.enc.Utf8.parse(String(value)),
+  )
+}
+
+/**
+ * AES 加密
+ */
+function aesEncrypt(value: unknown, key: string): string {
+  const parsedKey = CryptoJS.enc.Latin1.parse(key)
+
+  return CryptoJS.AES.encrypt(
+    String(value),
+    parsedKey,
+    {
+      iv: parsedKey,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.ZeroPadding,
+    },
+  ).toString()
+}
+
+/**
+ * 加密处理（App / 小程序 / Web 通用）
+ */
+export function encryption<T extends Record<string, any>>(params: EncryptionParams<T>): T {
+  const { data, type, param, key } = params
+
+  const result = deepClone(data)
+
+  if (!Array.isArray(param) || param.length === 0) {
+    return result
+  }
+
+  // Base64
+  if (type === 'Base64') {
+    param.forEach((field) => {
+      const value = result[field]
+      if (value != null) {
+        result[field] = base64Encode(value) as T[keyof T]
+      }
+    })
+    return result
+  }
+
+  // AES
+  if (!key) {
+    throw new Error('AES encryption requires a key')
+  }
+
+  param.forEach((field) => {
+    const value = result[field]
+    if (value != null) {
+      result[field] = aesEncrypt(value, key) as T[keyof T]
+    }
+  })
+
+  return result
+}

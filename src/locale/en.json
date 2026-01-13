@@ -6,5 +6,10 @@
   "alova.title": "Alova Request",
   "weight": "{heavy}KG",
   "detail": "{0}cm, {1}KG",
-  "introduction": "I am {name},height:{detail.height},weight:{detail.weight}"
+  "introduction": "I am {name},height:{detail.height},weight:{detail.weight}",
+  "http.tokenRefreshSuccess": "Token refreshed successfully",
+  "http.loginExpired": "Login expired, please login again",
+  "http.requestError": "Request error",
+  "http.networkError": "Network error, please try another network",
+  "http.loading": "Loading..."
 }
