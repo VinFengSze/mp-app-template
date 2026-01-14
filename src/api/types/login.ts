@@ -12,7 +12,7 @@ export interface IDoubleTokenRes {
   access_token: string
   refresh_token: string
   expires_in: number // 访问令牌有效期(秒)
-  // refreshExpiresIn: number // 刷新令牌有效期(秒)
+  refresh_token_expires_in: number // 刷新令牌有效期(秒)
 }
 
 /**
@@ -112,5 +112,5 @@ export function isSingleTokenRes(tokenRes: IAuthLoginRes): tokenRes is ISingleTo
  * @returns 是否为双Token响应
  */
 export function isDoubleTokenRes(tokenRes: IAuthLoginRes): tokenRes is IDoubleTokenRes {
-  return 'access_token' in tokenRes && 'refresh_token' in tokenRes && 'expires_in' in tokenRes
+  return 'access_token' in tokenRes && 'refresh_token' in tokenRes && 'expires_in' in tokenRes && 'refresh_token_expires_in' in tokenRes
 }

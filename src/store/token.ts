@@ -26,7 +26,7 @@ const tokenInfoState = isDoubleTokenMode
       access_token: '',
       expires_in: 0,
       refresh_token: '',
-      // refreshExpiresIn: 0,
+      refresh_token_expires_in: 0,
     }
   : {
       access_token: '',
@@ -60,7 +60,7 @@ export const useTokenStore = defineStore(
           access_token: val.access_token,
           expires_in: val.expires_in,
           refresh_token: val.refresh_token,
-          // refreshExpiresIn: val.refreshExpiresIn,
+          refresh_token_expires_in: val.refresh_token_expires_in,
         }
       }
       else {
@@ -75,9 +75,9 @@ export const useTokenStore = defineStore(
       if ('refresh_token' in val) {
         // 双token模式
         const accessExpireTime = now + val.expires_in * 1000
-        // const refreshExpireTime = now + val.refreshExpiresIn * 1000
+        const refreshExpireTime = now + val.refresh_token_expires_in * 1000
         uni.setStorageSync('accessTokenExpireTime', accessExpireTime)
-        // uni.setStorageSync('refreshTokenExpireTime', refreshExpireTime)
+        uni.setStorageSync('refreshTokenExpireTime', refreshExpireTime)
       }
       else {
         // 单token模式
@@ -248,7 +248,7 @@ export const useTokenStore = defineStore(
         // 无论成功失败，都需要清除本地token信息
         // 清除存储的过期时间
         uni.removeStorageSync('accessTokenExpireTime')
-        // uni.removeStorageSync('refreshTokenExpireTime')
+        uni.removeStorageSync('refreshTokenExpireTime')
         console.log('退出登录-清除用户信息')
         tokenInfo.value = { ...tokenInfoState }
         uni.removeStorageSync('token')

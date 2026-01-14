@@ -38,7 +38,6 @@ export function http<T>(options: CustomRequestOptions) {
       // #endif
       // 响应成功
       success: async (res) => {
-        console.log('请求成功-------XGHY', res)
         // 使用try-finally确保loading一定会被清理
         try {
           const responseData = res.data as IResponse<T>
